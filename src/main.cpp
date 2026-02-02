@@ -6,7 +6,16 @@
 
 using namespace std;
 
-string text;    
+struct Action {
+    string type; 
+    size_t position;
+    string content;
+    size_t length;      
+};
+
+string text;  
+stack<Action> undoStack;
+stack<Action> redoStack; 
 
 void print() {
     cout << text << endl;
@@ -39,6 +48,14 @@ void doInsert(size_t pos, const string& content) {
         cout << "Invalid position!" << endl;
         return;
     }
+
+    Action act;
+    act.type = "insert";
+    act.position = pos;
+    act.content = content;
+    undoStack.push(act);
+    redoStack = stack<Action>();
+
     // text.insert(pos, content);
     manual_insert(pos, content);
     print();
@@ -49,13 +66,61 @@ void doDelete(size_t pos, size_t len) {
         cout << "Invalid range!" << endl;
         return;
     }
+
+    string deleted = text.substr(pos, len);
+
+    Action act;
+    act.type = "delete";
+    act.position = pos;
+    act.content = deleted;
+    act.length = len;
+    undoStack.push(act);
+    redoStack = stack<Action>();
+
     // text.erase(pos, len);
     manual_erase(pos, len);
     print();
 }
 
-int main() {
+void doUndo() {
+    if (undoStack.empty()) {
+        cout << "Nothing to undo." << endl;
+        return;
+    }
 
+    Action act = undoStack.top();
+    undoStack.pop();
+    redoStack.push(act);
+
+    if (act.type == "insert" || act.type == "paste") {
+        text.erase(act.position, act.content.size());
+    } else if (act.type == "delete") {
+        text.insert(act.position, act.content);
+    }
+
+    print();
+}
+
+void doRedo() {
+    if (redoStack.empty()) {
+        cout << "Nothing to redo." << endl;
+        return;
+    }
+
+    Action act = redoStack.top();
+    redoStack.pop();
+    undoStack.push(act);
+
+    if (act.type == "insert" || act.type == "paste") {
+        text.insert(act.position, act.content);
+    } else if (act.type == "delete") {
+        text.erase(act.position, act.content.size());
+    }
+
+    print();
+}
+
+int main() {
     string line;
 
     cout << "========= Simple Text Editor - Command Line =======" << endl;
@@ -63,6 +128,8 @@ int main() {
     cout << "  print                   : Show current text" << endl;
     cout << "  insert <pos> <text>     : Insert text at position" << endl;
     cout << "  delete <pos> <length>   : Delete from position, length characters" << endl;
+    cout << "  undo                    : Undo last action" << endl;
+    cout << "  redo                    : Redo last undone action" << endl;
     cout << "  exit / quit             : Exit the program" << endl;
     cout << "  help                    : See this again" << endl;
     cout << "---------------------------------------------------" << endl;
@@ -96,12 +163,20 @@ int main() {
             ss >> pos >> len;
             doDelete(pos, len);
         }
+        else if (command == "undo") {
+            doUndo();
+        }
+        else if (command == "redo") {
+            doRedo();
+        }
         else if (command == "help") {
             cout << "========= Simple Text Editor - Command Line =======" << endl;
             cout << "--------------- Available commands  ---------------" << endl;
             cout << "  print                  : Show current text" << endl;
             cout << "  insert <pos> <text>     : Insert text at position" << endl;
             cout << "  delete <pos> <length>   : Delete from position, length characters" << endl;
+            cout << "  undo                    : Undo last action" << endl;
+            cout << "  redo                    : Redo last undone action" << endl;
             cout << "  exit / quit             : Exit the program" << endl;
             cout << "  help                    : See this again" << endl;
             cout << "---------------------------------------------------" << endl;
