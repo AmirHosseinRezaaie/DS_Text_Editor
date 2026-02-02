@@ -1,0 +1,5 @@
+insert 0 Start testing
+print
+insert 5  DS project
+print
+delete 5 7
