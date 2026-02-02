@@ -1,0 +1,23 @@
+# C++ build artifacts
+*.o
+*.obj
+*.exe
+*.out
+*.app
+build/
+bin/
+cmake-build-*/
+*.cmake
+CMakeCache.txt
+CMakeFiles/
+
+# macOS
+.DS_Store
+
+# VS Code / IDE
+.vscode/
+.idea/
+
+# temporary files
+*.swp
+*~
