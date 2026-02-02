@@ -3,3 +3,6 @@ print
 insert 5  DS project
 print
 delete 5 7
+undo
+undo
+redo
