@@ -6,6 +6,10 @@
 
 using namespace std;
 
+/* =======================
+   Undo / Redo structures
+   ======================= */
+
 struct Action {
     string type; 
     size_t position;
@@ -17,6 +21,83 @@ string text;
 stack<Action> undoStack;
 stack<Action> redoStack;
 string clipboard;       
+
+/* =======================
+   Trie structures (Suggestion)
+   ======================= */
+
+// هر نود Trie
+struct TrieNode {
+    bool isEnd;                 // آیا پایان یک کلمه است؟
+    TrieNode* children[26];     // حروف بعدی (a تا z)
+};
+
+// ساخت یک نود جدید
+TrieNode* createNode() {
+    TrieNode* node = new TrieNode;
+    node->isEnd = false;
+    for (int i = 0; i < 26; i++)
+        node->children[i] = nullptr;
+    return node;
+}
+
+// ریشه Trie
+TrieNode* trieRoot = createNode();
+
+/* =======================
+   Trie functions
+   ======================= */
+
+// درج یک کلمه در Trie
+void insertWord(const string& word) {
+    TrieNode* curr = trieRoot;
+
+    for (char c : word) {
+        if (c < 'a' || c > 'z') continue;   // فقط حروف کوچک
+
+        int idx = c - 'a';
+
+        if (!curr->children[idx])
+            curr->children[idx] = createNode();
+
+        curr = curr->children[idx];
+    }
+    curr->isEnd = true;
+}
+
+// پیدا کردن نود متناظر با prefix
+TrieNode* findPrefix(const string& prefix) {
+    TrieNode* curr = trieRoot;
+
+    for (char c : prefix) {
+        if (c < 'a' || c > 'z') return nullptr;
+
+        int idx = c - 'a';
+        if (!curr->children[idx])
+            return nullptr;
+
+        curr = curr->children[idx];
+    }
+    return curr;
+}
+
+// چاپ تمام پیشنهادها (DFS)
+void printSuggestions(TrieNode* node, string current) {
+    if (node->isEnd) {
+        cout << current << endl;
+    }
+
+    for (int i = 0; i < 26; i++) {
+        if (node->children[i]) {
+            char nextChar = 'a' + i;
+            printSuggestions(node->children[i], current + nextChar);
+        }
+    }
+}
+
+/* =======================
+   Editor utility functions
+   ======================= */
 
 void print() {
     cout << text << endl;
@@ -30,19 +111,23 @@ bool isValidRange(size_t pos, size_t len) {
     return pos <= text.size() && pos + len <= text.size();
 }
 
-// Manual insert without using string::insert()
+// Manual insert (بدون string::insert)
 void manual_insert(size_t pos, const string& content) {
     string left = text.substr(0, pos);
     string right = text.substr(pos);
     text = left + content + right;
 }
 
-// Manual erase without using string::erase()
+// Manual erase (بدون string::erase)
 void manual_erase(size_t pos, size_t len) {
     string left = text.substr(0, pos);
     string right = text.substr(pos + len);
     text = left + right;
 }
+
+/* =======================
+   Editor commands
+   ======================= */
 
 void doInsert(size_t pos, const string& content) {
     if (!isValidPosition(pos)) {
@@ -54,10 +139,24 @@ void doInsert(size_t pos, const string& content) {
     act.type = "insert";
     act.position = pos;
     act.content = content;
+
     undoStack.push(act);
     redoStack = stack<Action>();
 
-    text.insert(pos, content);
+    manual_insert(pos, content);
+
+    // کلمات جدید وارد Trie شوند (برای suggestion)
+    string word;
+    for (char c : content) {
+        if (c == ' ') {
+            if (!word.empty()) insertWord(word);
+            word.clear();
+        } else {
+            word += tolower(c);
+        }
+    }
+    if (!word.empty()) insertWord(word);
+
     print();
 }
 
@@ -74,10 +173,11 @@ void doDelete(size_t pos, size_t len) {
     act.position = pos;
     act.content = deleted;
     act.length = len;
+
     undoStack.push(act);
     redoStack = stack<Action>();
 
-    text.erase(pos, len);
+    manual_erase(pos, len);
     print();
 }
 
@@ -104,10 +204,11 @@ void doPaste(size_t pos) {
     act.type = "paste";
     act.position = pos;
     act.content = clipboard;
+
     undoStack.push(act);
     redoStack = stack<Action>();
 
-    text.insert(pos, clipboard);
+    manual_insert(pos, clipboard);
     print();
 }
 
@@ -122,9 +223,9 @@ void doUndo() {
     redoStack.push(act);
 
     if (act.type == "insert" || act.type == "paste") {
-        text.erase(act.position, act.content.size());
+        manual_erase(act.position, act.content.size());
     } else if (act.type == "delete") {
-        text.insert(act.position, act.content);
+        manual_insert(act.position, act.content);
     }
 
     print();
@@ -141,52 +242,59 @@ void doRedo() {
     undoStack.push(act);
 
     if (act.type == "insert" || act.type == "paste") {
-        text.insert(act.position, act.content);
+        manual_insert(act.position, act.content);
     } else if (act.type == "delete") {
-        text.erase(act.position, act.content.size());
+        manual_erase(act.position, act.content.size());
     }
 
     print();
 }
 
+/* =======================
+   Main
+   ======================= */
+
 int main() {
+    // دیکشنری اولیه برای suggestion
+    insertWord("hello");
+    insertWord("help");
+    insertWord("heap");
+    insertWord("hero");
+    insertWord("world");
+    insertWord("word");
+
     string line;
 
     cout << "========= Simple Text Editor - Command Line =======" << endl;
     cout << "--------------- Available commands  ---------------" << endl;
     cout << "  print                   : Show current text" << endl;
     cout << "  insert <pos> <text>     : Insert text at position" << endl;
-    cout << "  delete <pos> <length>   : Delete from position, length characters" << endl;
-    cout << "  copy <pos> <length>     : Copy text to clipboard" << endl;
-    cout << "  paste <pos>             : Paste clipboard content at position" << endl;
-    cout << "  undo                    : Undo last action" << endl;
-    cout << "  redo                    : Redo last undone action" << endl;
-    cout << "  exit / quit             : Exit the program" << endl;
-    cout << "  help                    : See this again" << endl;
+    cout << "  delete <pos> <length>   : Delete from position" << endl;
+    cout << "  copy <pos> <length>     : Copy text" << endl;
+    cout << "  paste <pos>             : Paste clipboard" << endl;
+    cout << "  undo / redo             : Undo / Redo" << endl;
+    cout << "  auto <prefix>           : Word suggestion" << endl;
+    cout << "  exit / quit             : Exit" << endl;
     cout << "---------------------------------------------------" << endl;
 
     while (true) {
         cout << "> ";
         getline(cin, line);
-
         if (line.empty()) continue;
 
         stringstream ss(line);
         string command;
         ss >> command;
 
-        if (command == "exit" || command == "quit") {
-            break;
-        }
-        else if (command == "print") {
-            print();
-        }
+        if (command == "exit" || command == "quit") break;
+        else if (command == "print") print();
         else if (command == "insert") {
             size_t pos;
             string content;
             ss >> pos;
-            getline(ss, content);    
-            if (!content.empty() && content[0] == ' ') content = content.substr(1);
+            getline(ss, content);
+            if (!content.empty() && content[0] == ' ')
+                content = content.substr(1);
             doInsert(pos, content);
         }
         else if (command == "delete") {
@@ -204,25 +312,17 @@ int main() {
             ss >> pos;
             doPaste(pos);
         }
-        else if (command == "undo") {
-            doUndo();
-        }
-        else if (command == "redo") {
-            doRedo();
-        }
-        else if (command == "help") {
-            cout << "========= Simple Text Editor - Command Line =======" << endl;
-            cout << "--------------- Available commands  ---------------" << endl;
-            cout << "  print                  : Show current text" << endl;
-            cout << "  insert <pos> <text>     : Insert text at position" << endl;
-            cout << "  delete <pos> <length>   : Delete from position, length characters" << endl;
-            cout << "  copy <pos> <length>     : Copy text to clipboard" << endl;
-            cout << "  paste <pos>             : Paste clipboard content at position" << endl;
-            cout << "  undo                    : Undo last action" << endl;
-            cout << "  redo                    : Redo last undone action" << endl;
-            cout << "  exit / quit             : Exit the program" << endl;
-            cout << "  help                    : See this again" << endl;
-            cout << "---------------------------------------------------" << endl;
+        else if (command == "undo") doUndo();
+        else if (command == "redo") doRedo();
+        else if (command == "auto") {
+            string prefix;
+            ss >> prefix;
+            TrieNode* node = findPrefix(prefix);
+            if (!node) {
+                cout << "No suggestions." << endl;
+            } else {
+                printSuggestions(node, prefix);
+            }
         }
         else {
             cout << "Unknown command." << endl;
