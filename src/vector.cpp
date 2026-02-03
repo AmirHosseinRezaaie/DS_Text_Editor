@@ -16,6 +16,7 @@ struct Action {
 vector<char> text;
 stack<Action> undoStack;
 stack<Action> redoStack;
+vector<char> clipboard;
 
 /* ---------- Utility ---------- */
 
@@ -41,6 +42,8 @@ void showHelp() {
     cout << "  delete <pos> <length>   : Delete from position, length characters" << endl;
     cout << "  undo                    : Undo last action" << endl;
     cout << "  redo                    : Redo last undone action" << endl;
+    cout << "  copy <pos> <length>     : Copy text to clipboard" << endl;
+    cout << "  paste <pos>             : Paste clipboard content at position" << endl;
     cout << "  exit / quit             : Exit the program" << endl;
     cout << "  help                    : See this again" << endl;
     cout << "---------------------------------------------------" << endl;
@@ -130,7 +133,7 @@ void doUndo() {
     undoStack.pop();
     redoStack.push(act);
 
-    if (act.type == "insert") {
+    if (act.type == "insert" || act.type == "paste") {
         manual_erase(act.position, act.content.size());
     }
     else if (act.type == "delete") {
@@ -150,7 +153,7 @@ void doRedo() {
     redoStack.pop();
     undoStack.push(act);
 
-    if (act.type == "insert") {
+    if (act.type == "insert" || act.type == "paste") {
         manual_insert(act.position, act.content);
     }
     else if (act.type == "delete") {
@@ -159,6 +162,46 @@ void doRedo() {
 
     print();
 }
+
+void doCopy(size_t pos, size_t len) {
+    if (!isValidRange(pos, len)) {
+        cout << "Invalid range!" << endl;
+        return;
+    }
+
+    clipboard.clear();
+    for (size_t i = 0; i < len; i++) {
+        clipboard.push_back(text[pos + i]);
+    }
+
+    cout << "Copied: \"";
+    for (char c : clipboard) cout << c;
+    cout << "\"" << endl;
+}
+
+void doPaste(size_t pos) {
+    if (clipboard.empty()) {
+        cout << "Clipboard is empty!" << endl;
+        return;
+    }
+
+    if (!isValidPosition(pos)) {
+        cout << "Invalid position!" << endl;
+        return;
+    }
+
+    Action act;
+    act.type = "paste";
+    act.position = pos;
+    act.content = clipboard;
+
+    undoStack.push(act);
+    redoStack = stack<Action>();
+
+    manual_insert(pos, clipboard);
+    print();
+}
+
 
 /* ---------- Main ---------- */
 
@@ -204,6 +247,16 @@ int main() {
         }
         else if (command == "redo") {
             doRedo();
+        }
+        else if (command == "copy") {
+            size_t pos, len;
+            ss >> pos >> len;
+            doCopy(pos, len);
+        }
+        else if (command == "paste") {
+            size_t pos;
+            ss >> pos;
+            doPaste(pos);
         }
         else {
             cout << "Unknown command." << endl;
