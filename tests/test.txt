@@ -3,3 +3,8 @@ print
 insert 5  DS project
 print
 delete 5 7
+copy 3 7
+paste 0
+copy 7 2
+paste 0
+print
