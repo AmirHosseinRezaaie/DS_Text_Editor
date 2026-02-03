@@ -2,7 +2,7 @@
 #include <string>
 #include <stack>
 #include <sstream>
-#include <limits>
+#include "trie.h"
 
 using namespace std;
 
@@ -20,87 +20,18 @@ struct Action {
 string text;  
 stack<Action> undoStack;
 stack<Action> redoStack;
-string clipboard;       
-
-/* =======================
-   Trie structures (Suggestion)
-   ======================= */
-
-// هر نود Trie
-struct TrieNode {
-    bool isEnd;                 // آیا پایان یک کلمه است؟
-    TrieNode* children[26];     // حروف بعدی (a تا z)
-};
-
-// ساخت یک نود جدید
-TrieNode* createNode() {
-    TrieNode* node = new TrieNode;
-    node->isEnd = false;
-    for (int i = 0; i < 26; i++)
-        node->children[i] = nullptr;
-    return node;
-}
-
-// ریشه Trie
-TrieNode* trieRoot = createNode();
-
-/* =======================
-   Trie functions
-   ======================= */
-
-// درج یک کلمه در Trie
-void insertWord(const string& word) {
-    TrieNode* curr = trieRoot;
-
-    for (char c : word) {
-        if (c < 'a' || c > 'z') continue;   // فقط حروف کوچک
-
-        int idx = c - 'a';
-
-        if (!curr->children[idx])
-            curr->children[idx] = createNode();
-
-        curr = curr->children[idx];
-    }
-    curr->isEnd = true;
-}
-
-// پیدا کردن نود متناظر با prefix
-TrieNode* findPrefix(const string& prefix) {
-    TrieNode* curr = trieRoot;
-
-    for (char c : prefix) {
-        if (c < 'a' || c > 'z') return nullptr;
-
-        int idx = c - 'a';
-        if (!curr->children[idx])
-            return nullptr;
-
-        curr = curr->children[idx];
-    }
-    return curr;
-}
-
-// چاپ تمام پیشنهادها (DFS)
-void printSuggestions(TrieNode* node, string current) {
-    if (node->isEnd) {
-        cout << current << endl;
-    }
-
-    for (int i = 0; i < 26; i++) {
-        if (node->children[i]) {
-            char nextChar = 'a' + i;
-            printSuggestions(node->children[i], current + nextChar);
-        }
-    }
-}
+string clipboard;
 
 /* =======================
    Editor utility functions
    ======================= */
 
 void print() {
-    cout << text << endl;
+    if (text.empty()) {
+        cout << "(empty)" << endl;
+    } else {
+        cout << "Text: \"" << text << "\"" << endl;
+    }
 }
 
 bool isValidPosition(size_t pos) {
@@ -109,6 +40,20 @@ bool isValidPosition(size_t pos) {
 
 bool isValidRange(size_t pos, size_t len) {
     return pos <= text.size() && pos + len <= text.size();
+}
+
+void showHelp() {
+    cout << "========= Simple Text Editor - Command Line =======" << endl;
+    cout << "--------------- Available commands  ---------------" << endl;
+    cout << "  print                   : Show current text" << endl;
+    cout << "  insert <pos> <text>     : Insert text at position" << endl;
+    cout << "  delete <pos> <length>   : Delete from position" << endl;
+    cout << "  copy <pos> <length>     : Copy text" << endl;
+    cout << "  paste <pos>             : Paste clipboard" << endl;
+    cout << "  undo / redo             : Undo / Redo" << endl;
+    cout << "  auto <prefix>           : Word suggestion" << endl;
+    cout << "  exit / quit             : Exit" << endl;
+    cout << "---------------------------------------------------" << endl;
 }
 
 // Manual insert (بدون string::insert)
@@ -124,6 +69,11 @@ void manual_erase(size_t pos, size_t len) {
     string right = text.substr(pos + len);
     text = left + right;
 }
+
+/* =======================
+   Global Trie instance
+   ======================= */
+TrieNode* trieRoot = nullptr;
 
 /* =======================
    Editor commands
@@ -145,17 +95,20 @@ void doInsert(size_t pos, const string& content) {
 
     manual_insert(pos, content);
 
-    // کلمات جدید وارد Trie شوند (برای suggestion)
+    // اضافه کردن کلمات جدید به دیکشنری
+    stringstream ss(content);
     string word;
-    for (char c : content) {
-        if (c == ' ') {
-            if (!word.empty()) insertWord(word);
-            word.clear();
-        } else {
-            word += tolower(c);
+    while (ss >> word) {
+        // فقط حروف کوچک اضافه کن
+        string cleanWord;
+        for (char c : word) {
+            if (c >= 'A' && c <= 'Z') c = c - 'A' + 'a';
+            if (c >= 'a' && c <= 'z') cleanWord += c;
+        }
+        if (!cleanWord.empty()) {
+            trieInsert(trieRoot, cleanWord);
         }
     }
-    if (!word.empty()) insertWord(word);
 
     print();
 }
@@ -250,32 +203,36 @@ void doRedo() {
     print();
 }
 
+void doAutoComplete(const string& prefix) {
+    if (prefix.empty()) {
+        cout << "Please enter a prefix." << endl;
+        return;
+    }
+    
+    vector<string> suggestions = trieGetSuggestions(trieRoot, prefix);
+    
+    if (suggestions.empty()) {
+        cout << "No suggestions for \"" << prefix << "\"" << endl;
+    } else {
+        cout << "Suggestions:" << endl;
+        for (const string& word : suggestions) {
+            cout << "  " << word << endl;
+        }
+    }
+}
+
 /* =======================
    Main
    ======================= */
 
 int main() {
-    // دیکشنری اولیه برای suggestion
-    insertWord("hello");
-    insertWord("help");
-    insertWord("heap");
-    insertWord("hero");
-    insertWord("world");
-    insertWord("word");
+    // ایجاد و راه‌اندازی Trie
+    trieRoot = createTrie();
+    loadDefaultDictionary(trieRoot);
 
+    showHelp();
+    
     string line;
-
-    cout << "========= Simple Text Editor - Command Line =======" << endl;
-    cout << "--------------- Available commands  ---------------" << endl;
-    cout << "  print                   : Show current text" << endl;
-    cout << "  insert <pos> <text>     : Insert text at position" << endl;
-    cout << "  delete <pos> <length>   : Delete from position" << endl;
-    cout << "  copy <pos> <length>     : Copy text" << endl;
-    cout << "  paste <pos>             : Paste clipboard" << endl;
-    cout << "  undo / redo             : Undo / Redo" << endl;
-    cout << "  auto <prefix>           : Word suggestion" << endl;
-    cout << "  exit / quit             : Exit" << endl;
-    cout << "---------------------------------------------------" << endl;
 
     while (true) {
         cout << "> ";
@@ -291,7 +248,10 @@ int main() {
         else if (command == "insert") {
             size_t pos;
             string content;
-            ss >> pos;
+            if (!(ss >> pos)) {
+                cout << "Invalid position!" << endl;
+                continue;
+            }
             getline(ss, content);
             if (!content.empty() && content[0] == ' ')
                 content = content.substr(1);
@@ -299,35 +259,49 @@ int main() {
         }
         else if (command == "delete") {
             size_t pos, len;
-            ss >> pos >> len;
+            if (!(ss >> pos >> len)) {
+                cout << "Invalid parameters!" << endl;
+                continue;
+            }
             doDelete(pos, len);
         }
         else if (command == "copy") {
             size_t pos, len;
-            ss >> pos >> len;
+            if (!(ss >> pos >> len)) {
+                cout << "Invalid parameters!" << endl;
+                continue;
+            }
             doCopy(pos, len);
         }
         else if (command == "paste") {
             size_t pos;
-            ss >> pos;
+            if (!(ss >> pos)) {
+                cout << "Invalid position!" << endl;
+                continue;
+            }
             doPaste(pos);
         }
         else if (command == "undo") doUndo();
         else if (command == "redo") doRedo();
         else if (command == "auto") {
             string prefix;
-            ss >> prefix;
-            TrieNode* node = findPrefix(prefix);
-            if (!node) {
-                cout << "No suggestions." << endl;
-            } else {
-                printSuggestions(node, prefix);
+            if (!(ss >> prefix)) {
+                cout << "Enter prefix!" << endl;
+                continue;
             }
+            doAutoComplete(prefix);
+        }
+        else if (command == "help") {
+            showHelp();
         }
         else {
             cout << "Unknown command." << endl;
         }
     }
 
+    // پاکسازی حافظه
+    destroyTrie(trieRoot);
+    
+    cout << "Goodbye!" << endl;
     return 0;
 }

@@ -2,6 +2,7 @@
 #include <vector>
 #include <stack>
 #include <sstream>
+#include "trie.h"
 
 using namespace std;
 
@@ -44,6 +45,7 @@ void showHelp() {
     cout << "  redo                    : Redo last undone action" << endl;
     cout << "  copy <pos> <length>     : Copy text to clipboard" << endl;
     cout << "  paste <pos>             : Paste clipboard content at position" << endl;
+    cout << "  auto <prefix>           : Suggestion for complete"<< endl;
     cout << "  exit / quit             : Exit the program" << endl;
     cout << "  help                    : See this again" << endl;
     cout << "---------------------------------------------------" << endl;
@@ -75,6 +77,10 @@ void manual_erase(size_t pos, size_t len) {
 
     text.resize(size - len);
 }
+
+/* ---- Global Trie instance ---- */
+
+   TrieNode* trieRoot = nullptr;
 
 /* ---------- Commands ---------- */
 
@@ -202,10 +208,31 @@ void doPaste(size_t pos) {
     print();
 }
 
+void doAutoComplete(const string& prefix) {
+    if (prefix.empty()) {
+        cout << "Please enter a prefix." << endl;
+        return;
+    }
+    
+    vector<string> suggestions = trieGetSuggestions(trieRoot, prefix);
+    
+    if (suggestions.empty()) {
+        cout << "No suggestions for \"" << prefix << "\"" << endl;
+    } else {
+        cout << "Suggestions:" << endl;
+        for (const string& word : suggestions) {
+            cout << "  " << word << endl;
+        }
+    }
+}
 
 /* ---------- Main ---------- */
 
 int main() {
+    // ایجاد و راه‌اندازی Trie
+    trieRoot = createTrie();
+    loadDefaultDictionary(trieRoot);
+
     string line;
 
     showHelp();
@@ -258,10 +285,22 @@ int main() {
             ss >> pos;
             doPaste(pos);
         }
+        else if (command == "auto") {
+            string prefix;
+            if (!(ss >> prefix)) {
+                cout << "Enter prefix!" << endl;
+                continue;
+            }
+            doAutoComplete(prefix);
+        }
         else {
             cout << "Unknown command." << endl;
         }
     }
 
+    // پاکسازی حافظه
+    destroyTrie(trieRoot);
+    
+    cout << "Goodbye!" << endl;
     return 0;
 }
