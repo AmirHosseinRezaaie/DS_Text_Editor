@@ -1,0 +1,16 @@
+insert 0 Start testing
+print
+insert 5  DS project
+print
+delete 5 7
+<<<<<<< HEAD
+copy 3 7
+paste 0
+copy 7 2
+paste 0
+print
+=======
+undo
+undo
+redo
+>>>>>>> 76ad0ece0c13d3b4ca86d6aa1a9f3a3ee2651185
