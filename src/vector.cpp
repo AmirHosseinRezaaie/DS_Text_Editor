@@ -5,14 +5,19 @@
 
 using namespace std;
 
+/* ---------- Data Structures ---------- */
+
 struct Action {
     string type;
     size_t position;
     vector<char> content;
-    size_t length;
 };
 
 vector<char> text;
+stack<Action> undoStack;
+stack<Action> redoStack;
+
+/* ---------- Utility ---------- */
 
 void print() {
     for (char c : text)
@@ -28,36 +33,47 @@ bool isValidRange(size_t pos, size_t len) {
     return pos <= text.size() && pos + len <= text.size();
 }
 
-// Manual insert without vector::insert
+void showHelp() {
+    cout << "========= Simple Text Editor - Command Line =======" << endl;
+    cout << "--------------- Available commands  ---------------" << endl;
+    cout << "  print                   : Show current text" << endl;
+    cout << "  insert <pos> <text>     : Insert text at position" << endl;
+    cout << "  delete <pos> <length>   : Delete from position, length characters" << endl;
+    cout << "  undo                    : Undo last action" << endl;
+    cout << "  redo                    : Redo last undone action" << endl;
+    cout << "  exit / quit             : Exit the program" << endl;
+    cout << "  help                    : See this again" << endl;
+    cout << "---------------------------------------------------" << endl;
+}
+
+/* ---------- Manual Vector Operations ---------- */
+
 void manual_insert(size_t pos, const vector<char>& content) {
     size_t oldSize = text.size();
     size_t len = content.size();
 
-    // resize vector
     text.resize(oldSize + len);
 
-    // shift right
     for (int i = oldSize - 1; i >= (int)pos; i--) {
         text[i + len] = text[i];
     }
 
-    // copy new content
     for (size_t i = 0; i < len; i++) {
         text[pos + i] = content[i];
     }
 }
 
-// Manual erase without vector::erase
 void manual_erase(size_t pos, size_t len) {
     size_t size = text.size();
 
-    // shift left
     for (size_t i = pos + len; i < size; i++) {
         text[i - len] = text[i];
     }
 
     text.resize(size - len);
 }
+
+/* ---------- Commands ---------- */
 
 void doInsert(size_t pos, const string& input) {
     if (!isValidPosition(pos)) {
@@ -69,6 +85,14 @@ void doInsert(size_t pos, const string& input) {
     for (char c : input)
         content.push_back(c);
 
+    Action act;
+    act.type = "insert";
+    act.position = pos;
+    act.content = content;
+
+    undoStack.push(act);
+    redoStack = stack<Action>();
+
     manual_insert(pos, content);
     print();
 }
@@ -79,34 +103,84 @@ void doDelete(size_t pos, size_t len) {
         return;
     }
 
+    vector<char> removed;
+    for (size_t i = 0; i < len; i++) {
+        removed.push_back(text[pos + i]);
+    }
+
+    Action act;
+    act.type = "delete";
+    act.position = pos;
+    act.content = removed;
+
+    undoStack.push(act);
+    redoStack = stack<Action>();
+
     manual_erase(pos, len);
     print();
 }
 
+void doUndo() {
+    if (undoStack.empty()) {
+        cout << "Nothing to undo." << endl;
+        return;
+    }
+
+    Action act = undoStack.top();
+    undoStack.pop();
+    redoStack.push(act);
+
+    if (act.type == "insert") {
+        manual_erase(act.position, act.content.size());
+    }
+    else if (act.type == "delete") {
+        manual_insert(act.position, act.content);
+    }
+
+    print();
+}
+
+void doRedo() {
+    if (redoStack.empty()) {
+        cout << "Nothing to redo." << endl;
+        return;
+    }
+
+    Action act = redoStack.top();
+    redoStack.pop();
+    undoStack.push(act);
+
+    if (act.type == "insert") {
+        manual_insert(act.position, act.content);
+    }
+    else if (act.type == "delete") {
+        manual_erase(act.position, act.content.size());
+    }
+
+    print();
+}
+
+/* ---------- Main ---------- */
+
 int main() {
-    
     string line;
 
-    cout << "========= Vector Text Editor - Insert/Delete =======" << endl;
-    cout << "Commands:" << endl;
-    cout << "  print" << endl;
-    cout << "  insert <pos> <text>" << endl;
-    cout << "  delete <pos> <length>" << endl;
-    cout << "  exit" << endl;
-    cout << "---------------------------------------------------" << endl;
+    showHelp();
 
     while (true) {
         cout << "> ";
         getline(cin, line);
-
         if (line.empty()) continue;
 
         stringstream ss(line);
         string command;
         ss >> command;
 
-        if (command == "exit") {
+        if (command == "exit" || command == "quit") {
             break;
+        }
+        else if (command == "help") {
+            showHelp();
         }
         else if (command == "print") {
             print();
@@ -118,13 +192,18 @@ int main() {
             getline(ss, content);
             if (!content.empty() && content[0] == ' ')
                 content = content.substr(1);
-
             doInsert(pos, content);
         }
         else if (command == "delete") {
             size_t pos, len;
             ss >> pos >> len;
             doDelete(pos, len);
+        }
+        else if (command == "undo") {
+            doUndo();
+        }
+        else if (command == "redo") {
+            doRedo();
         }
         else {
             cout << "Unknown command." << endl;
