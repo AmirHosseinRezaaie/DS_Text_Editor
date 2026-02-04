@@ -46,6 +46,8 @@ void showHelp() {
     cout << "  copy <pos> <length>     : Copy text to clipboard" << endl;
     cout << "  paste <pos>             : Paste clipboard content at position" << endl;
     cout << "  auto <prefix>           : Suggestion for complete"<< endl;
+    cout << "  showtrie [-a]           : Display Trie structure" << endl;
+    cout << "    -a or --all           : Show full tree (verbose)" << endl;
     cout << "  exit / quit             : Exit the program" << endl;
     cout << "  help                    : See this again" << endl;
     cout << "---------------------------------------------------" << endl;
@@ -292,6 +294,14 @@ int main() {
                 continue;
             }
             doAutoComplete(prefix);
+        }
+        else if (command == "showtrie") {
+            bool showAll = false;
+            string option;
+            if (ss >> option && (option == "-a" || option == "--all")) {
+                showAll = true;
+            }
+            trieShow(trieRoot, showAll);
         }
         else {
             cout << "Unknown command." << endl;

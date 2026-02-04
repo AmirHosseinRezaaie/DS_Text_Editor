@@ -142,8 +142,10 @@ info:
 	@echo "  Build directory: $(BUILD_DIR)"
 	@echo "  Output directory: $(BIN_DIR)"
 
+
 # Phony targets
 .PHONY: all clean clean-all run run-string run-vector quick-string quick-vector build-string build-vector help info
+
 
 # Default goal
 .DEFAULT_GOAL := help

@@ -1,5 +1,4 @@
 insert 0 Start testing
-print
 insert 5  DS project
 print
 delete 5 7
@@ -7,4 +6,122 @@ copy 3 7
 paste 0
 copy 7 2
 paste 0
-print
+history
+undo
+undo
+undo
+undo
+redo
+redo
+redo
+auto sta
+auto pro
+insert 30 " New words: programming algorithm"
+auto prog
+auto algo
+exit
+
+
+
+
+
+
+
+
+
+
+#outputs:
+
+Text: "Start testing"
+
+
+Text: "Start DS project testing"
+
+
+Text: "Start DS project testing"
+
+
+Text: "Start project testing"
+
+
+Copied!
+
+
+Text: "rt projStart project testing"
+
+
+Copied!
+
+
+Text: "Start rt projStart project testing"
+
+=== HISTORY STATUS ===
+Undo stack: 3/3 operations
+Redo stack: 0/3 operations
+
+Undo history (oldest to newest):
+  1. delete at 5 (-7 chars)
+  2. paste at 0 (+7 chars)
+  3. paste at 0 (+2 chars)
+
+
+[Undo] paste operation undone
+Text: "rt projStart project testing"
+
+
+[Undo] paste operation undone
+Text: "Start project testing"
+
+
+[Undo] delete operation undone
+Text: "Start DS project testing"
+
+
+Nothing to undo.
+
+
+[Redo] delete operation redone
+Text: "Start project testing"
+
+
+[Redo] paste operation redone
+Text: "rt projStart project testing"
+
+
+[Redo] paste operation redone
+Text: "Start rt projStart project testing"
+
+Suggestions:
+  start
+  stack
+  stand
+  state
+  static
+
+
+Suggestions:
+  project
+  program
+  process
+  product
+  progress
+
+
+Text: "Start rt projStart project testing New words: programming algorithm"
+
+
+Suggestions:
+  program
+  programming
+  progress
+  progressive
+  prognosis
+
+
+Suggestions:
+  algorithm
+  algorithmic
+  algorithms
+
+
+Goodbye!

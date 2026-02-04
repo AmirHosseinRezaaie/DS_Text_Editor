@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <deque>  
 #include <stack>
 #include <sstream>
 #include "trie.h"
@@ -18,8 +19,10 @@ struct Action {
 };
 
 string text;  
-stack<Action> undoStack;
-stack<Action> redoStack;
+deque<Action> undoHistory;    // به جای stack
+deque<Action> redoHistory;    // به جای stack
+const size_t MAX_HISTORY = 3;  // حداکثر 3 عمل ذخیره شود
+
 string clipboard;
 
 /* =======================
@@ -54,6 +57,7 @@ void showHelp() {
     cout << "  auto <prefix>           : Word suggestion" << endl;
     cout << "  showtrie [-a]           : Display Trie structure" << endl;
     cout << "    -a or --all           : Show full tree (verbose)" << endl;
+    cout << "  history             : Show undo/redo history status" << endl;
     cout << "  exit / quit             : Exit" << endl;
     cout << "---------------------------------------------------" << endl;
 }
@@ -92,8 +96,18 @@ void doInsert(size_t pos, const string& content) {
     act.position = pos;
     act.content = content;
 
-    undoStack.push(act);
-    redoStack = stack<Action>();
+    // اضافه کردن به تاریخچه
+    undoHistory.push_back(act);
+    
+    // مدیریت محدودیت تاریخچه
+    if (undoHistory.size() > MAX_HISTORY) {
+        cout << "[History] Oldest action removed (limit: " 
+             << MAX_HISTORY << " operations)" << endl;
+        undoHistory.pop_front();  // حذف قدیمی‌ترین عمل
+    }
+    
+    // پاک کردن redo هنگام عمل جدید
+    redoHistory.clear();
 
     manual_insert(pos, content);
 
@@ -129,8 +143,18 @@ void doDelete(size_t pos, size_t len) {
     act.content = deleted;
     act.length = len;
 
-    undoStack.push(act);
-    redoStack = stack<Action>();
+    // اضافه کردن به تاریخچه
+    undoHistory.push_back(act);
+    
+    // مدیریت محدودیت تاریخچه
+    if (undoHistory.size() > MAX_HISTORY) {
+        cout << "[History] Oldest action removed (limit: " 
+             << MAX_HISTORY << " operations)" << endl;
+        undoHistory.pop_front();  // حذف قدیمی‌ترین عمل
+    }
+    
+    // پاک کردن redo هنگام عمل جدید
+    redoHistory.clear();
 
     manual_erase(pos, len);
     print();
@@ -160,22 +184,37 @@ void doPaste(size_t pos) {
     act.position = pos;
     act.content = clipboard;
 
-    undoStack.push(act);
-    redoStack = stack<Action>();
+    // اضافه کردن به تاریخچه
+    undoHistory.push_back(act);
+    
+    // مدیریت محدودیت تاریخچه
+    if (undoHistory.size() > MAX_HISTORY) {
+        cout << "[History] Oldest action removed (limit: " 
+             << MAX_HISTORY << " operations)" << endl;
+        undoHistory.pop_front();  // حذف قدیمی‌ترین عمل
+    }
+    
+    // پاک کردن redo هنگام عمل جدید
+    redoHistory.clear();
 
     manual_insert(pos, clipboard);
     print();
 }
 
 void doUndo() {
-    if (undoStack.empty()) {
+    if (undoHistory.empty()) {
         cout << "Nothing to undo." << endl;
         return;
     }
 
-    Action act = undoStack.top();
-    undoStack.pop();
-    redoStack.push(act);
+    Action act = undoHistory.back();  // آخرین عمل
+    undoHistory.pop_back();
+    redoHistory.push_back(act);
+    
+    // محدودیت redo هم اعمال کنیم
+    if (redoHistory.size() > MAX_HISTORY) {
+        redoHistory.pop_front();
+    }
 
     if (act.type == "insert" || act.type == "paste") {
         manual_erase(act.position, act.content.size());
@@ -183,18 +222,26 @@ void doUndo() {
         manual_insert(act.position, act.content);
     }
 
+    cout << "[Undo] " << act.type << " operation undone" << endl;
     print();
 }
 
 void doRedo() {
-    if (redoStack.empty()) {
+    if (redoHistory.empty()) {
         cout << "Nothing to redo." << endl;
         return;
     }
 
-    Action act = redoStack.top();
-    redoStack.pop();
-    undoStack.push(act);
+    Action act = redoHistory.back();  // آخرین عمل
+    redoHistory.pop_back();
+    undoHistory.push_back(act);
+    
+    // محدودیت undo هم اعمال کنیم
+    if (undoHistory.size() > MAX_HISTORY) {
+        cout << "[History] Oldest action removed (limit: " 
+             << MAX_HISTORY << " operations)" << endl;
+        undoHistory.pop_front();
+    }
 
     if (act.type == "insert" || act.type == "paste") {
         manual_insert(act.position, act.content);
@@ -202,6 +249,7 @@ void doRedo() {
         manual_erase(act.position, act.content.size());
     }
 
+    cout << "[Redo] " << act.type << " operation redone" << endl;
     print();
 }
 
@@ -219,6 +267,29 @@ void doAutoComplete(const string& prefix) {
         cout << "Suggestions:" << endl;
         for (const string& word : suggestions) {
             cout << "  " << word << endl;
+        }
+    }
+}
+
+void showHistoryStatus() {
+    cout << "\n=== HISTORY STATUS ===" << endl;
+    cout << "Undo stack: " << undoHistory.size() << "/" << MAX_HISTORY << " operations" << endl;
+    cout << "Redo stack: " << redoHistory.size() << "/" << MAX_HISTORY << " operations" << endl;
+    
+    if (!undoHistory.empty()) {
+        cout << "\nUndo history (oldest to newest):" << endl;
+        int index = 1;
+        for (const auto& act : undoHistory) {
+            cout << "  " << index << ". " << act.type;
+            if (act.type == "insert") {
+                cout << " at " << act.position << " (+" << act.content.length() << " chars)";
+            } else if (act.type == "delete") {
+                cout << " at " << act.position << " (-" << act.content.length() << " chars)";
+            } else if (act.type == "paste") {
+                cout << " at " << act.position << " (+" << act.content.length() << " chars from clipboard)";
+            }
+            cout << endl;
+            index++;
         }
     }
 }
@@ -307,6 +378,9 @@ int main() {
                 showAll = true;
             }
             trieShow(trieRoot, showAll);
+        }
+        else if (command == "history") {
+            showHistoryStatus();
         }
         else if (command == "help") {
             showHelp();
