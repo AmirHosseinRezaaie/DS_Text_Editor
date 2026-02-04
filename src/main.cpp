@@ -52,6 +52,8 @@ void showHelp() {
     cout << "  paste <pos>             : Paste clipboard" << endl;
     cout << "  undo / redo             : Undo / Redo" << endl;
     cout << "  auto <prefix>           : Word suggestion" << endl;
+    cout << "  showtrie [-a]           : Display Trie structure" << endl;
+    cout << "    -a or --all           : Show full tree (verbose)" << endl;
     cout << "  exit / quit             : Exit" << endl;
     cout << "---------------------------------------------------" << endl;
 }
@@ -290,6 +292,21 @@ int main() {
                 continue;
             }
             doAutoComplete(prefix);
+        }
+        else if (command == "showtrie") {
+            bool showAll = false;
+            string option;
+            if (ss >> option && (option == "-a" || option == "--all")) {
+                showAll = true;
+            }
+            trieShow(trieRoot, showAll);
+        }else if (command == "showtrie") {
+            bool showAll = false;
+            string option;
+            if (ss >> option && (option == "-a" || option == "--all")) {
+                showAll = true;
+            }
+            trieShow(trieRoot, showAll);
         }
         else if (command == "help") {
             showHelp();

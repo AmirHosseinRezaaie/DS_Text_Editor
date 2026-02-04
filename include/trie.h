@@ -15,5 +15,7 @@ void destroyTrie(TrieNode* root);
 void trieInsert(TrieNode* root, const std::string& word);
 std::vector<std::string> trieGetSuggestions(TrieNode* root, const std::string& prefix);
 void loadDefaultDictionary(TrieNode* root);
+// تابع برای نمایش درخت
+void trieShow(TrieNode* root, bool showAll = false);
 
 #endif
