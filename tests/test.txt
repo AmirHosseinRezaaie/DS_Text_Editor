@@ -11,12 +11,16 @@ undo
 undo
 undo
 undo
+undo
+history
 redo
 redo
 redo
+redo
+showtrie
 auto sta
 auto pro
-insert 30 " New words: programming algorithm"
+insert 0 New words: programming algorithm 
 auto prog
 auto algo
 exit

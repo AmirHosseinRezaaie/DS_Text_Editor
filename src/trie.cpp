@@ -141,6 +141,11 @@ void loadDefaultDictionary(TrieNode* root) {
     cout << "Dictionary loaded with " << totalWords << " common words." << endl;
 }
 
+
+// =================================
+//           SHOW TRIE :
+// =================================
+
 #include <queue>
 #include <iomanip>
 #include <sstream>
