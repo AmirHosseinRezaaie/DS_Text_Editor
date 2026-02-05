@@ -57,7 +57,8 @@ void showHelp() {
     cout << "  auto <prefix>           : Word suggestion" << endl;
     cout << "  showtrie [-a]           : Display Trie structure" << endl;
     cout << "    -a or --all           : Show full tree (verbose)" << endl;
-    cout << "  history             : Show undo/redo history status" << endl;
+    cout << "  history                 : Show undo/redo history status" << endl;
+    cout << "  help                    : Show again this help menu" << endl;
     cout << "  exit / quit             : Exit" << endl;
     cout << "---------------------------------------------------" << endl;
 }

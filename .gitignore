@@ -21,3 +21,5 @@ CMakeFiles/
 # temporary files
 *.swp
 *~
+
+*.zip
